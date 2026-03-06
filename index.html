@@ -23,6 +23,14 @@
         .fc-button-active { background-color: #1d4ed8 !important; }
         .fc-event { cursor: pointer; border-radius: 4px; padding: 2px 4px; transition: opacity 0.2s; }
         .fc-event-dragging { opacity: 0.7; }
+        
+        /* 手機版 FullCalendar 響應式優化 */
+        @media (max-width: 640px) {
+            .fc .fc-toolbar { flex-direction: column; gap: 0.75rem; }
+            .fc .fc-toolbar-title { font-size: 1.25rem !important; }
+            .fc .fc-button { padding: 0.3rem 0.6rem; font-size: 0.875rem; }
+            .fc-header-toolbar { margin-bottom: 1rem !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen overflow-hidden font-sans">
@@ -30,52 +38,35 @@
         
         <!-- ================= 步驟 1：資料庫設定畫面 (僅首次或未設定時顯示) ================= -->
         <div v-if="!isConfigured" class="flex-grow flex items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100 p-4 overflow-y-auto">
-            <div class="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full text-left my-8">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full text-left my-8">
                 <div class="flex items-center mb-6">
                     <div class="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mr-4 shrink-0">
                         <i data-lucide="database" class="text-indigo-600 w-6 h-6"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-800">系統初始化設定</h1>
-                        <p class="text-gray-500 text-sm">請設定您的 JSONBin 雲端資料庫</p>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">日曆系統初始化</h1>
+                        <p class="text-gray-500 text-sm">與團隊建立連線</p>
                     </div>
                 </div>
                 
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-6 text-sm text-blue-800 space-y-2">
-                    <p class="font-bold"><i data-lucide="info" class="w-4 h-4 inline mr-1 -mt-0.5"></i>如何取得 API Key？</p>
-                    <ol class="list-decimal pl-5 space-y-1">
-                        <li>前往 <a href="https://jsonbin.io/" target="_blank" class="underline font-semibold text-blue-600 hover:text-blue-800">JSONBin.io</a> 登入或免費註冊。</li>
-                        <li>在左側選單點擊 <strong>API Keys</strong>。</li>
-                        <li>點擊 <strong>+ Create New Key</strong>，複製那串 <code>$2a$10$...</code> 開頭的密碼。</li>
-                        <li>將密碼貼在下方，系統會自動幫您建立資料庫！</li>
-                    </ol>
+                    <p class="font-bold"><i data-lucide="info" class="w-4 h-4 inline mr-1 -mt-0.5"></i>歡迎使用團隊共享日曆</p>
+                    <p>您可以直接點擊下方按鈕建立一個全新日曆，或是輸入團隊提供的 <strong>Bin ID</strong> 來加入現有的日曆空間。</p>
                 </div>
 
                 <form @submit.prevent="setupDatabase" class="space-y-5">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">您的 API Key (Master Key) <span class="text-red-500">*</span></label>
-                        <input 
-                            v-model="setupApiKey" 
-                            type="password" 
-                            required
-                            placeholder="例如：$2a$10$abcde12345..." 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
-                        >
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Bin ID (選填)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">團隊 Bin ID (選填)</label>
                         <input 
                             v-model="setupBinId" 
                             type="text" 
-                            placeholder="留空將自動為您建立一個新 Bin" 
+                            placeholder="留空將自動為您建立一個新日曆" 
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm bg-gray-50"
                         >
-                        <p class="text-xs text-gray-500 mt-1">如果是團隊成員，請貼上隊長分享給您的 Bin ID。</p>
                     </div>
 
                     <p v-if="setupErrorMsg" class="text-red-500 text-sm flex items-center">
-                        <i data-lucide="alert-circle" class="w-4 h-4 mr-1"></i> {{ setupErrorMsg }}
+                        <i data-lucide="alert-circle" class="w-4 h-4 mr-1 shrink-0"></i> {{ setupErrorMsg }}
                     </p>
 
                     <button 
@@ -84,7 +75,7 @@
                         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50 flex justify-center items-center"
                     >
                         <i v-if="isSettingUp" data-lucide="loader-2" class="w-5 h-5 mr-2 animate-spin"></i>
-                        {{ isSettingUp ? '連線並建立中...' : '儲存設定並開始使用' }}
+                        {{ isSettingUp ? '連線並建立中...' : (setupBinId ? '加入現有團隊日曆' : '建立全新共享日曆') }}
                     </button>
                 </form>
             </div>
@@ -92,8 +83,8 @@
 
         <!-- ================= 步驟 2：登入畫面 ================= -->
         <div v-else-if="!currentUser" class="flex-grow flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-            <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center relative overflow-hidden">
-                <button @click="resetConfig" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors" title="重新設定資料庫">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-md w-full text-center relative overflow-hidden">
+                <button @click="resetConfig" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors" title="切換日曆 / 重新設定">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                 </button>
 
@@ -123,37 +114,36 @@
 
         <!-- ================= 步驟 3：主日曆畫面 ================= -->
         <div v-else class="flex-grow flex flex-col h-full relative">
-            <!-- 頂部導覽列 -->
-            <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shrink-0 mt-[1px]">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-blue-600 w-8 h-8 rounded text-white flex items-center justify-center font-bold">C</div>
+            <!-- 頂部導覽列 (支援手機版 RWD) -->
+            <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center shrink-0 mt-[1px] gap-3 sm:gap-0">
+                <div class="flex items-center space-x-3 w-full sm:w-auto justify-center sm:justify-start">
+                    <div class="bg-blue-600 w-8 h-8 rounded text-white flex items-center justify-center font-bold shrink-0">C</div>
                     <div class="flex flex-col">
-                        <h1 class="text-xl font-bold text-gray-800 flex items-center">
+                        <h1 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center">
                             團隊共用日曆
-                            <span class="ml-3 flex items-center text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                <i data-lucide="database" class="w-3 h-3 mr-1"></i> JSON 雲端
-                            </span>
                         </h1>
-                        <span class="text-xs text-gray-400 font-mono mt-0.5" title="可將此 ID 分享給團隊成員">Bin ID: {{ setupBinId }}</span>
+                        <span class="text-[10px] sm:text-xs text-gray-400 font-mono mt-0.5" title="可將此 ID 分享給團隊成員">Bin ID: {{ setupBinId }}</span>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <button @click="loadFromCloud(true)" :disabled="isLoadingEvents" class="text-sm text-blue-600 hover:text-blue-800 flex items-center bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50" title="手動抓取最新資料">
-                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-1" :class="{'animate-spin': isLoadingEvents}"></i> 同步最新
+                <div class="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-between sm:justify-end">
+                    <button @click="loadFromCloud(true)" :disabled="isLoadingEvents" class="text-xs sm:text-sm text-blue-600 hover:text-blue-800 flex items-center bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50" title="手動抓取最新資料">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" :class="{'animate-spin': isLoadingEvents}"></i> 同步最新
                     </button>
-                    <div class="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
-                        <i data-lucide="user" class="w-4 h-4 mr-2"></i>
-                        目前身分：<span class="font-semibold text-gray-800 ml-1">{{ currentUser }}</span>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex items-center text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
+                            <i data-lucide="user" class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5"></i>
+                            <span class="font-semibold text-gray-800 truncate max-w-[80px] sm:max-w-[150px]">{{ currentUser }}</span>
+                        </div>
+                        <button @click="logout" class="text-gray-500 hover:text-red-600 transition-colors p-2 bg-gray-50 rounded-full" title="登出">
+                            <i data-lucide="log-out" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        </button>
                     </div>
-                    <button @click="logout" class="text-gray-500 hover:text-red-600 transition-colors p-2" title="登出">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
-                    </button>
                 </div>
             </header>
 
             <!-- 日曆容器 -->
-            <main class="flex-grow p-6 overflow-auto">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-full min-h-[600px] relative">
+            <main class="flex-grow p-4 sm:p-6 overflow-auto">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 h-full min-h-[500px] relative">
                     <div v-show="isLoadingEvents" class="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl">
                         <i data-lucide="loader-2" class="w-8 h-8 text-blue-500 animate-spin"></i>
                     </div>
@@ -166,30 +156,31 @@
         <!-- ================= 活動編輯/新增 Modal ================= -->
         <div v-if="showModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                <div class="bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+                    <h2 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
                         <i v-if="modalMode === 'add'" data-lucide="calendar-plus" class="w-5 h-5 mr-2 text-blue-600"></i>
                         <i v-else-if="modalMode === 'edit'" data-lucide="edit" class="w-5 h-5 mr-2 text-amber-500"></i>
                         <i v-else data-lucide="eye" class="w-5 h-5 mr-2 text-gray-500"></i>
                         {{ modalMode === 'add' ? '新增活動' : modalMode === 'edit' ? '編輯活動' : '活動詳情' }}
                     </h2>
-                    <button @click="showModal = false" :disabled="isSaving" class="text-gray-400 hover:text-gray-600 disabled:opacity-50">
+                    <button @click="showModal = false" :disabled="isSaving" class="text-gray-400 hover:text-gray-600 disabled:opacity-50 p-1">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-grow space-y-4">
+                <div class="p-4 sm:p-6 overflow-y-auto flex-grow space-y-4">
                     <!-- ✨ AI 智能解析 -->
-                    <div v-if="modalMode === 'add'" class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-2">
-                        <label class="block text-sm font-bold text-indigo-800 mb-2 flex items-center">
+                    <div v-if="modalMode === 'add'" class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 sm:p-4 mb-2">
+                        <label class="block text-sm font-bold text-indigo-800 mb-2 flex flex-col sm:flex-row sm:items-center">
                             <span>✨ AI 智能建立</span>
-                            <span class="text-xs font-normal text-indigo-600 ml-2">貼上對話或信件，讓 AI 自動解析</span>
+                            <span class="text-xs font-normal text-indigo-600 sm:ml-2 mt-1 sm:mt-0">輸入對話或信件，讓 AI 自動解析填入</span>
                         </label>
                         <div class="flex space-x-2">
-                            <input type="text" v-model="aiParseText" placeholder="例如：明天下午兩點到四點跟老闆開會" class="flex-grow px-3 py-2 border border-indigo-200 rounded-md text-sm outline-none focus:border-indigo-500" @keyup.enter="parseTextWithAI" :disabled="isParsingAI || isSaving">
+                            <input type="text" v-model="aiParseText" placeholder="例如：明天下午兩點到四點開會" class="flex-grow px-3 py-2 border border-indigo-200 rounded-md text-sm outline-none focus:border-indigo-500" @keyup.enter="parseTextWithAI" :disabled="isParsingAI || isSaving">
                             <button @click="parseTextWithAI" :disabled="isParsingAI || !aiParseText.trim() || isSaving" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center shrink-0">
                                 <i v-if="isParsingAI" data-lucide="loader-2" class="w-4 h-4 mr-1 animate-spin"></i>
-                                {{ isParsingAI ? '解析中...' : '解析' }}
+                                <span class="hidden sm:inline">{{ isParsingAI ? '解析中...' : '解析' }}</span>
+                                <span class="sm:hidden">{{ isParsingAI ? '處理中' : 'AI' }}</span>
                             </button>
                         </div>
                     </div>
@@ -199,14 +190,14 @@
                         <input type="text" v-model="currentEvent.title" :disabled="modalMode === 'view' || isSaving" class="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500" placeholder="請輸入活動名稱">
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">開始時間</label>
-                            <input type="text" :value="formatDateDisplay(currentEvent.start)" disabled class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600 text-sm">
+                            <input type="datetime-local" v-model="eventStartInput" :disabled="modalMode === 'view' || isSaving" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm focus:border-blue-500 outline-none disabled:bg-gray-50 disabled:text-gray-500 transition-colors">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">結束時間</label>
-                            <input type="text" :value="formatDateDisplay(currentEvent.end)" disabled class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600 text-sm">
+                            <input type="datetime-local" v-model="eventEndInput" :disabled="modalMode === 'view' || isSaving" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 text-sm focus:border-blue-500 outline-none disabled:bg-gray-50 disabled:text-gray-500 transition-colors">
                         </div>
                     </div>
 
@@ -229,11 +220,11 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
-                    <button v-if="modalMode === 'edit'" @click="deleteEvent" :disabled="isSaving" class="px-4 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors mr-auto disabled:opacity-50">刪除活動</button>
-                    <button @click="showModal = false" :disabled="isSaving" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors disabled:opacity-50">{{ modalMode === 'view' ? '關閉' : '取消' }}</button>
-                    <button v-if="modalMode !== 'view'" @click="saveEvent" :disabled="isSaving" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm shadow-blue-200 disabled:opacity-50 flex items-center">
-                        <i v-if="isSaving" data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i>{{ isSaving ? '儲存中...' : '儲存' }}
+                <div class="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-100 flex justify-end space-x-2 sm:space-x-3 shrink-0">
+                    <button v-if="modalMode === 'edit'" @click="deleteEvent" :disabled="isSaving" class="px-3 py-2 sm:px-4 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium transition-colors mr-auto disabled:opacity-50 text-sm sm:text-base">刪除</button>
+                    <button @click="showModal = false" :disabled="isSaving" class="px-3 py-2 sm:px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-colors disabled:opacity-50 text-sm sm:text-base">{{ modalMode === 'view' ? '關閉' : '取消' }}</button>
+                    <button v-if="modalMode !== 'view'" @click="saveEvent" :disabled="isSaving" class="px-4 py-2 sm:px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm shadow-blue-200 disabled:opacity-50 flex items-center text-sm sm:text-base">
+                        <i v-if="isSaving" data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i>{{ isSaving ? '儲存中...' : '儲存活動' }}
                     </button>
                 </div>
             </div>
@@ -241,15 +232,20 @@
     </div>
 
     <script type="module">
-        import { createApp, ref, onMounted, nextTick } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+        import { createApp, ref, onMounted, nextTick, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
         
+        // =========================================================================
+        // ⚠️ 系統設定區：將您的 API Key 寫死在這裡，使用者只需登入 Bin ID 即可
+        // =========================================================================
+        // const MASTER_API_KEY = 'YOUR_API_KEY_HERE'; // 請替換為您從 JSONBin 取得的 Master Key ($2a$10$...)
+        const MASTER_API_KEY = '$2a$10$e2lDV7jQ3B7H/lCFmBRBTuzfHpeYAT2zh9WVq8rakmzWwKiXIIRxu'; // 請替換為您從 JSONBin 取得的 Master Key ($2a$10$...)
+        // =========================================================================
+
         createApp({
             setup() {
                 // =============== 系統設定與狀態 ===============
-                // 從 localStorage 讀取設定
-                const setupApiKey = ref(localStorage.getItem('cal_jsonbin_api_key') || '');
                 const setupBinId = ref(localStorage.getItem('cal_jsonbin_bin_id') || '');
-                const isConfigured = ref(!!(setupApiKey.value && setupBinId.value));
+                const isConfigured = ref(!!setupBinId.value);
                 
                 const isSettingUp = ref(false);
                 const setupErrorMsg = ref('');
@@ -270,10 +266,42 @@
                     extendedProps: { creator: '', description: '' }
                 });
 
+                // =============== 處理時間格式供 HTML datetime-local 使用 ===============
+                const formatForInput = (dateStr) => {
+                    if (!dateStr) return '';
+                    let d;
+                    // 若只有日期 (例如從 FullCalendar 點擊全天)，預設帶入當地時間早上 8 點
+                    if (dateStr.length === 10) {
+                        d = new Date(dateStr + 'T08:00:00');
+                    } else {
+                        d = new Date(dateStr);
+                    }
+                    if (isNaN(d.getTime())) return '';
+                    
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const hours = String(d.getHours()).padStart(2, '0');
+                    const minutes = String(d.getMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day}T${hours}:${minutes}`;
+                };
+
+                // 綁定「開始時間」輸入框
+                const eventStartInput = computed({
+                    get: () => formatForInput(currentEvent.value.start),
+                    set: (val) => { if(val) currentEvent.value.start = new Date(val).toISOString(); }
+                });
+
+                // 綁定「結束時間」輸入框
+                const eventEndInput = computed({
+                    get: () => formatForInput(currentEvent.value.end),
+                    set: (val) => { if(val) currentEvent.value.end = new Date(val).toISOString(); }
+                });
+
                 // =============== 自動建立/綁定 JSONBin ===============
                 const setupDatabase = async () => {
-                    if (!setupApiKey.value.trim()) {
-                        setupErrorMsg.value = "請輸入您的 JSONBin API Key";
+                    if (!MASTER_API_KEY || MASTER_API_KEY === 'YOUR_API_KEY_HERE') {
+                        setupErrorMsg.value = "系統錯誤：管理員尚未在程式碼中設定 MASTER_API_KEY！";
                         return;
                     }
 
@@ -283,20 +311,20 @@
                     try {
                         let binId = setupBinId.value.trim();
                         
-                        // 如果使用者沒有填寫 Bin ID，程式自動幫他建一個空的陣列 []
+                        // 如果使用者沒有填寫 Bin ID，程式自動幫他建一個空的陣列
                         if (!binId) {
                             const res = await fetch('https://api.jsonbin.io/v3/b', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
-                                    'X-Master-Key': setupApiKey.value.trim(),
-                                    'X-Bin-Name': 'Shared-Calendar-Data' // 自動命名
+                                    'X-Master-Key': MASTER_API_KEY,
+                                    'X-Bin-Name': 'Shared-Calendar-Data' 
                                 },
-                                body: JSON.stringify([]) // ✅ 解決 "Bin cannot be blank" 的核心：自動塞入空陣列
+                                body: JSON.stringify({ events: [] })
                             });
 
                             if (!res.ok) {
-                                if (res.status === 401) throw new Error("API Key 無效，請確認您複製的密碼正確。");
+                                if (res.status === 401) throw new Error("程式內的 API Key 無效，請聯絡管理員確認。");
                                 throw new Error(`建立失敗 (HTTP ${res.status})`);
                             }
 
@@ -307,19 +335,16 @@
 
                         // 測試讀取一次，確保權限正確
                         const testRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-                            headers: { 'X-Master-Key': setupApiKey.value.trim(), 'X-Bin-Meta': 'false' }
+                            headers: { 'X-Master-Key': MASTER_API_KEY, 'X-Bin-Meta': 'false' }
                         });
-                        if (!testRes.ok) throw new Error("無法讀取此 Bin ID，請確認 API Key 與 Bin ID 是否匹配。");
+                        if (!testRes.ok) throw new Error("無法讀取此 Bin ID，請確認團隊提供的 ID 是否正確。");
 
                         // 儲存設定到瀏覽器
-                        localStorage.setItem('cal_jsonbin_api_key', setupApiKey.value.trim());
                         localStorage.setItem('cal_jsonbin_bin_id', binId);
                         isConfigured.value = true;
                         
-                        // 初始化圖標
                         nextTick(initIcons);
-                        
-                        alert(`✅ 資料庫設定成功！\n\n您的專屬 Bin ID：${binId}\n\n如果您想邀請團隊成員，請將「API Key」與「Bin ID」提供給他們填入即可共用同一個日曆！`);
+                        alert(`✅ 日曆連線成功！\n\n您的團隊專屬 Bin ID：${binId}\n\n請將這個 ID 分享給其他成員，讓大家加入同一個日曆！`);
                     } catch (error) {
                         setupErrorMsg.value = error.message;
                     } finally {
@@ -328,11 +353,9 @@
                 };
 
                 const resetConfig = () => {
-                    if(confirm("確定要清除資料庫設定嗎？這將會登出並需要重新輸入 API Key。")) {
-                        localStorage.removeItem('cal_jsonbin_api_key');
+                    if(confirm("確定要離開目前的日曆空間嗎？")) {
                         localStorage.removeItem('cal_jsonbin_bin_id');
                         localStorage.removeItem('cal_user');
-                        setupApiKey.value = '';
                         setupBinId.value = '';
                         currentUser.value = '';
                         isConfigured.value = false;
@@ -342,7 +365,7 @@
                 };
 
                 // =============== Gemini API 整合 (保留原功能) ===============
-                const apiKey = "$2a$10$djJgTt1eG.wVCh.9cxMk3u0hb0KNd93m0rafgJWfWAmZx5abn4aD."; // 系統自動注入
+                const apiKey = ""; // 系統自動注入
                 const aiParseText = ref('');
                 const isParsingAI = ref(false);
                 const isPolishing = ref(false);
@@ -403,17 +426,24 @@
                     try {
                         const res = await fetch(`https://api.jsonbin.io/v3/b/${setupBinId.value}/latest`, {
                             headers: { 
-                                'X-Master-Key': setupApiKey.value,
+                                'X-Master-Key': MASTER_API_KEY,
                                 'X-Bin-Meta': 'false' 
                             }
                         });
                         
                         if (!res.ok) throw new Error(`HTTP 狀態碼: ${res.status}`);
-                        const events = await res.json(); 
+                        const data = await res.json(); 
+                        
+                        let events = [];
+                        if (Array.isArray(data)) {
+                            events = data;
+                        } else if (data && Array.isArray(data.events)) {
+                            events = data.events;
+                        }
                         
                         if (calendar) {
                             calendar.removeAllEvents();
-                            calendar.addEventSource(Array.isArray(events) ? events : []);
+                            calendar.addEventSource(events);
                         }
                         isLoadingEvents.value = false;
                         if (isManual) alert("✅ 已成功同步最新資料！");
@@ -432,9 +462,9 @@
                             method: 'PUT',
                             headers: { 
                                 'Content-Type': 'application/json',
-                                'X-Master-Key': setupApiKey.value
+                                'X-Master-Key': MASTER_API_KEY
                             },
-                            body: JSON.stringify(eventsArray)
+                            body: JSON.stringify({ events: eventsArray })
                         });
 
                         if (!res.ok) throw new Error(`寫入失敗 (${res.status})`);
@@ -448,6 +478,7 @@
                 // =============== 工具與日曆管理 ===============
                 const initIcons = () => { nextTick(() => { if (window.lucide) window.lucide.createIcons(); }); };
 
+                // 畫面顯示用 (非編輯框)
                 const formatDateDisplay = (dateStr) => {
                     if (!dateStr) return '';
                     const d = new Date(dateStr);
@@ -618,9 +649,10 @@
                 });
 
                 return {
-                    isConfigured, setupApiKey, setupBinId, isSettingUp, setupErrorMsg, setupDatabase, resetConfig,
+                    isConfigured, setupBinId, isSettingUp, setupErrorMsg, setupDatabase, resetConfig,
                     currentUser, nameInput, login, logout,
                     calendarEl, showModal, modalMode, currentEvent,
+                    eventStartInput, eventEndInput, // 新增的編輯時間變數綁定
                     saveEvent, deleteEvent, formatDateDisplay,
                     isLoadingEvents, isSaving, loadFromCloud, 
                     aiParseText, isParsingAI, isPolishing, aiErrorMsg, parseTextWithAI, polishDescriptionWithAI
